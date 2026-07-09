@@ -1,0 +1,20 @@
+name: industrial
+organization: Industrial-nois
+project: DxFactory
+defaults:
+  ado_auth: azcli
+  base_branch: dxfac/development
+env: {}
+tools:
+  fake.echo:
+    command: python
+    args:
+      - tools/fake/echo.py
+    timeout_seconds: 30
+    side_effect: false
+  fake.mutate:
+    command: python
+    args:
+      - tools/fake/echo.py
+    timeout_seconds: 30
+    side_effect: true

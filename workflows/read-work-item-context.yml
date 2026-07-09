@@ -1,0 +1,26 @@
+name: read-work-item-context
+description: Read work item context through the current runner contract using a fake echo tool.
+inputs:
+  work_item:
+    description: Azure DevOps work item id.
+    required: true
+  workspace:
+    description: Local workspace alias or path.
+    required: false
+    default: default
+steps:
+  - id: echo_context
+    name: Echo resolved work item context
+    tool: fake.echo
+    with:
+      work_item: "{{ inputs.work_item }}"
+      workspace: "{{ inputs.workspace }}"
+      organization: "{{ profile.organization }}"
+      project: "{{ profile.project }}"
+      base_branch: "{{ profile.defaults.base_branch }}"
+outputs:
+  work_item: "{{ steps.echo_context.output.work_item }}"
+  workspace: "{{ steps.echo_context.output.workspace }}"
+  organization: "{{ steps.echo_context.output.organization }}"
+  project: "{{ steps.echo_context.output.project }}"
+  base_branch: "{{ steps.echo_context.output.base_branch }}"

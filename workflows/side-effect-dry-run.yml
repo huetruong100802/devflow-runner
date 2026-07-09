@@ -1,0 +1,14 @@
+name: side-effect-dry-run
+description: Fixture workflow proving dry-run skips side-effect tools.
+inputs:
+  value:
+    required: true
+steps:
+  - id: planned_mutation
+    tool: fake.mutate
+    with:
+      value: "{{ inputs.value }}"
+outputs:
+  planned_tool: "{{ steps.planned_mutation.output.planned_tool }}"
+  skipped: "{{ steps.planned_mutation.output.skipped }}"
+  value: "{{ steps.planned_mutation.output.planned_inputs.value }}"
