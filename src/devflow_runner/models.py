@@ -1,4 +1,4 @@
-"""Pydantic models for profiles, workflows, and tool results."""
+"""Pydantic models for profiles, workflows, and tool protocol contracts."""
 
 from __future__ import annotations
 
@@ -78,12 +78,47 @@ class Workflow(StrictModel):
         return value
 
 
+class ToolMeta(StrictModel):
+    workflow: str = Field(min_length=1)
+    step: str = Field(min_length=1)
+    tool: str = Field(min_length=1)
+    dry_run: bool = False
+
+
+class ToolContext(StrictModel):
+    run_id: str = Field(min_length=1)
+    run_dir: str = Field(min_length=1)
+    workflow: str = Field(min_length=1)
+    profile: str = Field(min_length=1)
+    dry_run: bool = False
+
+
+class ToolEnvelope(StrictModel):
+    meta: ToolMeta
+    context: ToolContext
+    inputs: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolError(StrictModel):
+    code: str = Field(min_length=1)
+    message: str = Field(min_length=1)
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
 class ToolResult(StrictModel):
     ok: bool
     data: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
     metrics: dict[str, Any] = Field(default_factory=dict)
-    error: dict[str, Any] | None = None
+    error: ToolError | None = None
+
+    @model_validator(mode="after")
+    def success_and_error_envelopes_must_be_consistent(self) -> "ToolResult":
+        if self.ok and self.error is not None:
+            raise ValueError("successful tool result must not include error")
+        if not self.ok and self.error is None:
+            raise ValueError("failed tool result must include error")
+        return self
 
     @classmethod
     def dry_run_plan(cls, *, tool: str, inputs: dict[str, Any], skipped: bool) -> "ToolResult":

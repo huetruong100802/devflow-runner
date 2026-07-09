@@ -1,6 +1,6 @@
 # DevFlow Runner
 
-Thin Python CLI workflow runner for the first DevFlow MVP foundation tasks: DFR-001 to DFR-008.
+Thin Python CLI workflow runner for the first DevFlow MVP foundation tasks: DFR-001 to DFR-013.
 
 Implemented scope:
 
@@ -19,9 +19,11 @@ Implemented scope:
   - `output.json`
   - `log.txt`
 - Tool subprocess executor:
-  - sends JSON to `stdin`
+  - sends validated JSON envelope to `stdin`
   - parses machine JSON from `stdout`
   - writes `stderr` to `log.txt`
+  - fails fast on invalid stdout JSON
+  - fails the step when a tool returns `ok: false`
 - Dry-run handling for side-effect tools.
 
 Not implemented in this slice:
@@ -47,7 +49,7 @@ wf validate --profile industrial
 wf run read-work-item-context --profile industrial --input work_item=6219 --input workspace=dxfactory --dry-run
 ```
 
-## Tool contract in this slice
+## Tool contract
 
 A tool is called as a subprocess. Runner sends a JSON envelope to `stdin`:
 
@@ -61,7 +63,10 @@ A tool is called as a subprocess. Runner sends a JSON envelope to `stdin`:
   },
   "context": {
     "run_id": "...",
-    "run_dir": "..."
+    "run_dir": "...",
+    "workflow": "read-work-item-context",
+    "profile": "industrial",
+    "dry_run": false
   },
   "inputs": {
     "work_item": "6219"
@@ -69,7 +74,7 @@ A tool is called as a subprocess. Runner sends a JSON envelope to `stdin`:
 }
 ```
 
-The tool must write JSON to `stdout`:
+A successful tool must write machine JSON to `stdout`:
 
 ```json
 {
@@ -80,4 +85,18 @@ The tool must write JSON to `stdout`:
 }
 ```
 
-Human logs belong on `stderr`.
+A tool-level failure must still write valid machine JSON to `stdout`:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "ADO_LOGIN_REQUIRED",
+    "message": "Please run az login",
+    "details": {}
+  },
+  "metrics": {}
+}
+```
+
+Runner treats this as a failed step. Human logs belong on `stderr` only and are never parsed as data.

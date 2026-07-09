@@ -33,5 +33,9 @@ class ToolExecutionError(DevFlowError):
     code = "TOOL_EXECUTION_ERROR"
 
 
+class ToolReturnedError(ToolExecutionError):
+    code = "TOOL_RETURNED_ERROR"
+
+
 class ToolProtocolError(DevFlowError):
     code = "TOOL_PROTOCOL_ERROR"
