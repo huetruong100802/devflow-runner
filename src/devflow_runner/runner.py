@@ -8,7 +8,7 @@ from typing import Any
 
 from .errors import ValidationError
 from .loader import load_profile, load_workflow
-from .models import Profile, StepArtifact, ToolResult, Workflow, WorkflowStep
+from .models import Profile, StepArtifact, ToolContext, ToolEnvelope, ToolMeta, ToolResult, Workflow, WorkflowStep
 from .resolver import VariableResolver
 from .run_store import RunStore
 from .tool_exec import ToolExecutor
@@ -70,13 +70,13 @@ class WorkflowRunner:
 
         effective_inputs = self._build_inputs(workflow, inputs)
         store = RunStore(self.runs_root, workflow.name)
-        context: dict[str, Any] = {
-            "run_id": store.run_id,
-            "run_dir": str(store.run_dir),
-            "workflow": workflow.name,
-            "profile": profile.name,
-            "dry_run": dry_run,
-        }
+        context = ToolContext(
+            run_id=store.run_id,
+            run_dir=str(store.run_dir),
+            workflow=workflow.name,
+            profile=profile.name,
+            dry_run=dry_run,
+        )
         steps_scope: dict[str, dict[str, Any]] = {}
         executor = ToolExecutor(project_root=self.project_root, profile=profile, log=store.append_log)
 
@@ -89,7 +89,7 @@ class WorkflowRunner:
                 "inputs": effective_inputs,
             },
         )
-        store.write_json("context.json", context)
+        store.write_json("context.json", context.model_dump(mode="json"))
 
         for step in workflow.steps:
             artifact = self._run_step(
@@ -129,7 +129,7 @@ class WorkflowRunner:
         step: WorkflowStep,
         workflow: Workflow,
         profile: Profile,
-        context: dict[str, Any],
+        context: ToolContext,
         inputs: dict[str, Any],
         steps_scope: dict[str, dict[str, Any]],
         executor: ToolExecutor,
@@ -150,16 +150,16 @@ class WorkflowRunner:
                 result=result,
             )
 
-        envelope = {
-            "meta": {
-                "workflow": workflow.name,
-                "step": step.id,
-                "tool": step.tool,
-                "dry_run": dry_run,
-            },
-            "context": context,
-            "inputs": resolved_inputs,
-        }
+        envelope = ToolEnvelope(
+            meta=ToolMeta(
+                workflow=workflow.name,
+                step=step.id,
+                tool=step.tool,
+                dry_run=dry_run,
+            ),
+            context=context,
+            inputs=resolved_inputs,
+        )
         result = executor.execute(tool_name=step.tool, envelope=envelope)
         return StepArtifact(
             id=step.id,

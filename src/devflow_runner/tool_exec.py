@@ -10,8 +10,8 @@ from typing import Any, Callable
 
 from pydantic import ValidationError as PydanticValidationError
 
-from .errors import ToolExecutionError, ToolProtocolError
-from .models import Profile, ToolResult
+from .errors import ToolExecutionError, ToolProtocolError, ToolReturnedError
+from .models import Profile, ToolEnvelope, ToolResult
 
 LogFn = Callable[[str], None]
 
@@ -22,11 +22,25 @@ class ToolExecutor:
         self.profile = profile
         self.log = log or (lambda _message: None)
 
-    def execute(self, *, tool_name: str, envelope: dict[str, Any]) -> ToolResult:
+    def execute(self, *, tool_name: str, envelope: ToolEnvelope | dict[str, Any]) -> ToolResult:
         if tool_name not in self.profile.tools:
             raise ToolExecutionError(
                 f"tool '{tool_name}' is not defined in profile '{self.profile.name}'",
                 details={"tool": tool_name, "profile": self.profile.name},
+            )
+
+        try:
+            tool_envelope = ToolEnvelope.model_validate(envelope)
+        except PydanticValidationError as exc:
+            raise ToolProtocolError(
+                f"tool '{tool_name}' input envelope does not match ToolEnvelope schema",
+                details={"tool": tool_name, "errors": exc.errors(include_url=False)},
+            ) from exc
+
+        if tool_envelope.meta.tool != tool_name:
+            raise ToolProtocolError(
+                f"tool envelope meta.tool does not match requested tool '{tool_name}'",
+                details={"tool": tool_name, "meta_tool": tool_envelope.meta.tool},
             )
 
         tool = self.profile.tools[tool_name]
@@ -39,7 +53,7 @@ class ToolExecutor:
         try:
             completed = subprocess.run(
                 command,
-                input=json.dumps(envelope, ensure_ascii=False),
+                input=json.dumps(tool_envelope.model_dump(mode="json"), ensure_ascii=False),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -89,6 +103,14 @@ class ToolExecutor:
             raise ToolExecutionError(
                 f"tool '{tool_name}' exited with code {completed.returncode}",
                 details={"tool": tool_name, "returncode": completed.returncode, "result": result.model_dump(mode="json")},
+            )
+
+        if not result.ok:
+            error = result.error
+            error_message = error.message if error is not None else "tool returned ok=false"
+            raise ToolReturnedError(
+                f"tool '{tool_name}' returned error: {error_message}",
+                details={"tool": tool_name, "result": result.model_dump(mode="json")},
             )
 
         return result
