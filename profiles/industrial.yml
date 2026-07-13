@@ -39,3 +39,54 @@ tools:
       - tools/git/compact_diff.ps1
     timeout_seconds: 60
     side_effect: false
+
+  ado.validate_environment:
+    command: pwsh
+    args:
+      - -NoProfile
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - tools/ado/validate_environment.ps1
+    timeout_seconds: 60
+    side_effect: false
+  ado.read_work_item:
+    command: pwsh
+    args:
+      - -NoProfile
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - tools/ado/read_work_item.ps1
+    timeout_seconds: 60
+    side_effect: false
+  ado.create_pr:
+    command: pwsh
+    args:
+      - -NoProfile
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - tools/ado/create_pr.ps1
+    timeout_seconds: 120
+    side_effect: true
+  ado.add_pr_reviewer:
+    command: pwsh
+    args:
+      - -NoProfile
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - tools/ado/add_pr_reviewer.ps1
+    timeout_seconds: 60
+    side_effect: true
+  ado.link_work_item_to_pr:
+    command: pwsh
+    args:
+      - -NoProfile
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - tools/ado/link_work_item_to_pr.ps1
+    timeout_seconds: 60
+    side_effect: true
