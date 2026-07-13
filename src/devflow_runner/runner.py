@@ -68,7 +68,11 @@ class WorkflowRunner:
         workflow = load_workflow(self.project_root, workflow_name)
         validate_workflow_tools(profile, workflow)
 
-        effective_inputs = self._build_inputs(workflow, inputs)
+        effective_inputs = self._build_inputs(
+            workflow,
+            inputs,
+            profile=profile,
+        )
         store = RunStore(self.runs_root, workflow.name)
         context = ToolContext(
             run_id=store.run_id,
@@ -177,13 +181,16 @@ class WorkflowRunner:
             "steps": steps,
         }
 
-    def _build_inputs(self, workflow: Workflow, raw_inputs: dict[str, Any]) -> dict[str, Any]:
+    def _build_inputs(self, workflow: Workflow, raw_inputs: dict[str, Any], *, profile: Profile) -> dict[str, Any]:
         effective: dict[str, Any] = {}
+        defaulted_inputs: list[str] = []
+
         for name, spec in workflow.inputs.items():
             if name in raw_inputs:
                 effective[name] = raw_inputs[name]
             elif spec.default is not None:
                 effective[name] = spec.default
+                defaulted_inputs.append(name)
             elif spec.required:
                 raise ValidationError(
                     f"missing required input '{name}'",
@@ -199,4 +206,16 @@ class WorkflowRunner:
                     details={"workflow": workflow.name, "input": name},
                 )
             effective[name] = value
+
+        # Resolve only YAML defaults. Values explicitly supplied by the user
+        # must remain untouched.
+        scope = self._scope(
+            profile=profile,
+            inputs=effective,
+            steps={},
+        )
+
+        for name in defaulted_inputs:
+            effective[name] = self.resolver.resolve(effective[name], scope)
+
         return effective

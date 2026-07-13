@@ -4,6 +4,7 @@ project: DxFactory
 defaults:
   ado_auth: azcli
   base_branch: dxfac/development
+  max_diff_lines: 800
 env: {}
 tools:
   fake.echo:
@@ -18,3 +19,23 @@ tools:
       - tools/fake/echo.py
     timeout_seconds: 30
     side_effect: true
+  git.repo_context:
+    command: pwsh
+    args:
+      - -NoProfile
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - tools/git/repo_context.ps1
+    timeout_seconds: 30
+    side_effect: false
+  git.compact_diff:
+    command: pwsh
+    args:
+      - -NoProfile
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - tools/git/compact_diff.ps1
+    timeout_seconds: 60
+    side_effect: false
