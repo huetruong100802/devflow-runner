@@ -1,6 +1,6 @@
 # DevFlow Runner
 
-Thin Python CLI workflow runner for the first DevFlow MVP foundation tasks: DFR-001 to DFR-016.
+Thin Python CLI workflow runner for the first DevFlow MVP foundation tasks: DFR-001 to DFR-021.
 
 Implemented scope:
 
@@ -28,11 +28,17 @@ Implemented scope:
 - Git read-only tools:
   - `git.repo_context`: validates workspace and returns branch, repo root, remote and latest commit metadata.
   - `git.compact_diff`: validates workspace and returns a line-capped merge-base diff plus changed-file summary.
+- Azure DevOps tools:
+  - `ado.validate_environment`: checks Azure CLI, the Azure DevOps extension, login state, organization and project access.
+  - `ado.read_work_item`: reads one work item and returns stable summary fields plus the raw Azure DevOps payload.
+  - `ado.create_pr`: creates a pull request and defaults to draft mode.
+  - `ado.add_pr_reviewer`: adds one or more reviewers to a pull request.
+  - `ado.link_work_item_to_pr`: links one or more work items to a pull request.
 
 Not implemented in this slice:
 
-- Real Azure DevOps mutation tools.
 - AI wrapper.
+- End-to-end ADO workflows such as `create-pr` and `read-work-item-context` using the real ADO tools.
 - UI, scheduler, retry engine, plugin marketplace, parallel execution.
 
 ## Install for local development
@@ -47,6 +53,14 @@ Git tools require:
 
 - `git` available on `PATH`.
 - PowerShell 7 command `pwsh` available on `PATH`.
+
+ADO tools additionally require:
+
+- Azure CLI command `az` available on `PATH`.
+- Azure DevOps extension installed with `az extension add --name azure-devops`.
+- An active Azure CLI login from `az login`.
+- Access to the organization and project configured in the selected profile.
+- No PAT or other secret stored in profile YAML.
 
 ## Commands
 
@@ -146,3 +160,17 @@ Runner treats this as a failed step. Human logs belong on `stderr` only and are 
 - `total_lines`
 - `returned_lines`
 - `truncated`
+
+## ADO tool input notes
+
+All ADO tools accept `organization` as either an organization name such as `newoceanis` or a full URL. Names are normalized to `https://dev.azure.com/<organization>`.
+
+| Tool | Required inputs | Optional inputs | Side effect |
+|---|---|---|---|
+| `ado.validate_environment` | `organization`, `project` | none | no |
+| `ado.read_work_item` | `organization`, `project`, `work_item` | none | no |
+| `ado.create_pr` | `organization`, `project`, `repository`, `source_branch`, `target_branch`, `title` | `description`, `draft` (default `true`) | yes |
+| `ado.add_pr_reviewer` | `organization`, `pull_request_id`, `reviewers` or `reviewer` | none | yes |
+| `ado.link_work_item_to_pr` | `organization`, `pull_request_id`, `work_items` or `work_item` | none | yes |
+
+The three mutation tools are registered with `side_effect: true`, so the runner skips them and records planned inputs when the containing workflow runs with `--dry-run`.
