@@ -1,6 +1,6 @@
 # DevFlow Runner
 
-Thin Python CLI workflow runner for the first DevFlow MVP foundation tasks: DFR-001 to DFR-013.
+Thin Python CLI workflow runner for the first DevFlow MVP foundation tasks: DFR-001 to DFR-016.
 
 Implemented scope:
 
@@ -25,11 +25,13 @@ Implemented scope:
   - fails fast on invalid stdout JSON
   - fails the step when a tool returns `ok: false`
 - Dry-run handling for side-effect tools.
+- Git read-only tools:
+  - `git.repo_context`: validates workspace and returns branch, repo root, remote and latest commit metadata.
+  - `git.compact_diff`: validates workspace and returns a line-capped merge-base diff plus changed-file summary.
 
 Not implemented in this slice:
 
 - Real Azure DevOps mutation tools.
-- Git tools.
 - AI wrapper.
 - UI, scheduler, retry engine, plugin marketplace, parallel execution.
 
@@ -41,12 +43,29 @@ python -m venv .venv
 pip install -e .[dev]
 ```
 
+Git tools require:
+
+- `git` available on `PATH`.
+- PowerShell 7 command `pwsh` available on `PATH`.
+
 ## Commands
 
 ```bash
 wf --help
 wf validate --profile industrial
 wf run read-work-item-context --profile industrial --input work_item=6219 --input workspace=dxfactory --dry-run
+```
+
+Git context workflow:
+
+```bash
+wf run git-context --profile industrial --input workspace=. --input base_ref=dxfac/development
+```
+
+Override the diff budget when needed:
+
+```bash
+wf run git-context --profile industrial --input workspace=. --input max_diff_lines=300
 ```
 
 ## Tool contract
@@ -100,3 +119,30 @@ A tool-level failure must still write valid machine JSON to `stdout`:
 ```
 
 Runner treats this as a failed step. Human logs belong on `stderr` only and are never parsed as data.
+
+## Git tool output notes
+
+`git.repo_context` returns stable metadata under `data`, including:
+
+- `workspace`
+- `repo_root`
+- `current_branch`
+- `upstream_branch`
+- `remote_origin`
+- `latest_commit`
+- `latest_commit_short`
+- `latest_commit_subject`
+- `is_dirty`
+- `status_count`
+
+`git.compact_diff` returns:
+
+- `base_ref`
+- `head_ref`
+- `merge_base`
+- `diff`
+- `files`
+- `file_count`
+- `total_lines`
+- `returned_lines`
+- `truncated`

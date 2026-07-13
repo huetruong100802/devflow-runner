@@ -1,0 +1,47 @@
+name: git-context
+description: Read local Git repository context and compact merge-base diff.
+inputs:
+  workspace:
+    description: Local Git workspace path.
+    required: false
+    default: .
+  base_ref:
+    description: Base ref used for merge-base diff.
+    required: false
+    default: "{{ profile.defaults.base_branch }}"
+  max_diff_lines:
+    description: Maximum diff lines returned by git.compact_diff.
+    required: false
+    default: "{{ profile.defaults.max_diff_lines }}"
+  context_lines:
+    description: Unified diff context lines.
+    required: false
+    default: 3
+steps:
+  - id: repo_context
+    name: Read Git repository context
+    tool: git.repo_context
+    with:
+      workspace: "{{ inputs.workspace }}"
+  - id: compact_diff
+    name: Read compact merge-base diff
+    tool: git.compact_diff
+    with:
+      workspace: "{{ steps.repo_context.output.repo_root }}"
+      base_ref: "{{ inputs.base_ref }}"
+      max_lines: "{{ inputs.max_diff_lines }}"
+      context_lines: "{{ inputs.context_lines }}"
+outputs:
+  repo_root: "{{ steps.repo_context.output.repo_root }}"
+  current_branch: "{{ steps.repo_context.output.current_branch }}"
+  remote_origin: "{{ steps.repo_context.output.remote_origin }}"
+  latest_commit: "{{ steps.repo_context.output.latest_commit }}"
+  is_dirty: "{{ steps.repo_context.output.is_dirty }}"
+  base_ref: "{{ steps.compact_diff.output.base_ref }}"
+  merge_base: "{{ steps.compact_diff.output.merge_base }}"
+  file_count: "{{ steps.compact_diff.output.file_count }}"
+  total_lines: "{{ steps.compact_diff.output.total_lines }}"
+  returned_lines: "{{ steps.compact_diff.output.returned_lines }}"
+  truncated: "{{ steps.compact_diff.output.truncated }}"
+  files: "{{ steps.compact_diff.output.files }}"
+  diff: "{{ steps.compact_diff.output.diff }}"
